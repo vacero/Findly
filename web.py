@@ -16,6 +16,21 @@ def to_utc_iso(dt):
     """Serialize a naive UTC datetime from the DB with an explicit UTC offset."""
     return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
 
+
+class PollingAccessFilter(logging.Filter):
+    """Hide access log lines for the dashboard's successful 10-second polling requests."""
+    POLLED_PATHS = {"/api/stats", "/api/searches", "/api/settings", "/api/items"}
+
+    def filter(self, record):
+        args = record.args
+        if isinstance(args, tuple) and len(args) == 5:
+            _, method, path, _, status = args
+            if method == "GET" and path in self.POLLED_PATHS and isinstance(status, int) and status < 400:
+                return False
+        return True
+
+logging.getLogger("uvicorn.access").addFilter(PollingAccessFilter())
+
 app = FastAPI(title="Findly Web UI")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
