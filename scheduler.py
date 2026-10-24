@@ -82,11 +82,18 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
         search = db.query(Search).filter(Search.id == search_id).first()
         if not search:
             return
+
+        # First check of a new search: record existing listings without notifying
+        is_first_check = search.last_checked_at is None
             
         logger.info(f"Checking updates for search {search.id}")
         items = []
         
-        target_platform = platform_override or search.platform or "both"
+        if is_first_check:
+            # Check all platforms so the other platform loop doesn't notify on its first run
+            target_platform = search.platform or "both"
+        else:
+            target_platform = platform_override or search.platform or "both"
         
         if target_platform in ["wallapop", "both"]:
             w_items = await asyncio.to_thread(search_items, search.keywords, search.min_price, search.max_price, search.distance_in_km, search.condition)
@@ -119,6 +126,8 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                 url=item.get('url')
             )
             db.add(seen)
+            if is_first_check:
+                continue
 
             if new_items_count <= max_items_to_notify:
                 plat_name = item.get('platform', 'Wallapop')
@@ -151,7 +160,10 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                     })
         
 
-        if new_items_count > max_items_to_notify:
+        if is_first_check:
+            logger.info(f"First check for search {search.id}: recorded {new_items_count} existing items without notifying")
+
+        if new_items_count > max_items_to_notify and not is_first_check:
             region = get_setting("region", "es").lower()
             wallapop_region = region if region in ["es", "it", "pt"] else "es"
             vinted_domain = "co.uk" if region == "uk" else region
