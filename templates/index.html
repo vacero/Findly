@@ -130,7 +130,7 @@
                                 <span class="text-sm text-gray-500 font-medium">{{ distanceLabel }}</span>
                             </div>
                             <div class="relative w-full h-8 flex items-center">
-                                <input v-model.number="formSearch.distance_index" type="range" min="0" max="3" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+                                <input v-model.number="formSearch.distance_index" type="range" min="0" max="3" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent">
                             </div>
                             <div class="flex justify-between text-xs text-gray-400 mt-1 px-1">
                                 <span>5km</span>
@@ -630,7 +630,19 @@ createApp({
         }
         const copyToClipboard = async (text) => {
             try {
-                await navigator.clipboard.writeText(text)
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text)
+                } else {
+                    const textarea = document.createElement('textarea')
+                    textarea.value = text
+                    textarea.setAttribute('readonly', '')
+                    textarea.style.position = 'fixed'
+                    textarea.style.top = '-1000px'
+                    document.body.appendChild(textarea)
+                    textarea.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(textarea)
+                }
             } catch (err) {
                 console.error('Failed to copy', err)
             }
