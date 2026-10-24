@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import timezone
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +10,11 @@ from database import SessionLocal, Search, SeenItem, AppSetting, get_setting
 from pairing import generate_code, get_code_status
 
 logger = logging.getLogger(__name__)
+
+
+def to_utc_iso(dt):
+    """Serialize a naive UTC datetime from the DB with an explicit UTC offset."""
+    return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
 
 app = FastAPI(title="Findly Web UI")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -213,7 +219,7 @@ def get_items():
                 "platform_id": i.wallapop_id,
                 "search_id": i.search_id,
                 "search_keywords": i.search.keywords if i.search else "Deleted Search",
-                "found_at": i.found_at.isoformat() if i.found_at else None,
+                "found_at": to_utc_iso(i.found_at),
                 "title": i.title,
                 "price": i.price,
                 "url": i.url
@@ -238,8 +244,8 @@ def get_searches():
                 "condition": s.condition,
                 "platform": s.platform,
                 "chat_id": s.chat_id,
-                "created_at": s.created_at.isoformat() if s.created_at else None,
-                "last_checked_at": s.last_checked_at.isoformat() if s.last_checked_at else None
+                "created_at": to_utc_iso(s.created_at),
+                "last_checked_at": to_utc_iso(s.last_checked_at)
             }
             for s in searches
         ]
