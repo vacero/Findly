@@ -37,9 +37,10 @@ async def post_init(application: Application):
     asyncio.create_task(platform_scheduler_loop(global_queue, "vinted"))
     asyncio.create_task(cleanup_loop())
     
-    # Send startup message
+    # Send startup message (disable with STARTUP_MESSAGE=false)
+    send_startup = get_setting("startup_message", "true").strip().lower() not in ("false", "0", "no", "off")
     allowed_chats = get_setting("allowed_chat_ids", "")
-    if allowed_chats:
+    if send_startup and allowed_chats:
         chat_ids = []
         for cid in allowed_chats.split(','):
             cleaned = cid.strip("'\" ")
