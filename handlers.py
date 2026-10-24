@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from sqlalchemy.orm import Session
 from database import SessionLocal, Search, SeenItem, get_setting
 from i18n import t
+from html import escape
 
 def get_db_session():
     return SessionLocal()
@@ -194,7 +195,7 @@ async def list_searches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             min_p = int(s.min_price) if s.min_price is not None else "None"
             max_p = int(s.max_price) if s.max_price is not None else "None"
             
-            keywords_display = f"<b>'{s.keywords}'</b>"
+            keywords_display = f"<b>'{escape(s.keywords, quote=False)}'</b>"
             if s.distance_in_km:
                 keywords_display += " 🌎"
             
@@ -226,9 +227,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     
                     # Update message to remove the button and add confirmation
                     if query.message.caption:
-                        await query.edit_message_caption(caption=query.message.caption + "\n\n❌ <i>Búsqueda eliminada.</i>", parse_mode="HTML", reply_markup=None)
+                        await query.edit_message_caption(caption=query.message.caption_html + "\n\n❌ <i>Búsqueda eliminada.</i>", parse_mode="HTML", reply_markup=None)
                     else:
-                        await query.edit_message_text(text=query.message.text + t("search_deleted_inline", region), parse_mode="HTML", reply_markup=None)
+                        await query.edit_message_text(text=query.message.text_html + t("search_deleted_inline", region), parse_mode="HTML", reply_markup=None)
                 else:
                     await query.message.reply_text(t("search_already_deleted", region))
             finally:

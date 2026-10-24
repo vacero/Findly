@@ -9,8 +9,17 @@ from i18n import t
 from wallapop import search_items
 from vinted import search_vinted
 import urllib.parse
+from html import escape
 
 logger = logging.getLogger(__name__)
+
+def format_price(price, currency):
+    """Format a price like 12.5 -> '12.50 EUR', 500.0 -> '500 EUR'; '?' if missing."""
+    try:
+        amount = f"{float(price):.2f}".removesuffix(".00")
+    except (TypeError, ValueError):
+        return "?"
+    return f"{amount} {currency or ''}".strip()
 
 async def telegram_notifier_loop(application: Application, queue: asyncio.Queue):
     logger.info("Telegram notifier worker started.")
@@ -115,9 +124,9 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                 plat_name = item.get('platform', 'Wallapop')
                 msg = (
                     f"🎁 <b>Nuevo artículo encontrado en {plat_name}!</b>\n\n"
-                    f"<b>{item['title']}</b>\n"
-                    f"💶 Precio: {int(item['price'])} {item['currency']}\n"
-                    f"<a href='{item['url']}'>Ver en {plat_name}</a>"
+                    f"<b>{escape(item['title'], quote=False)}</b>\n"
+                    f"💶 Precio: {format_price(item.get('price'), item.get('currency'))}\n"
+                    f"<a href=\"{escape(item['url'] or '', quote=False)}\">Ver en {plat_name}</a>"
                 )
                 
                 keyboard = [[InlineKeyboardButton("❌ Dejar de seguir", callback_data=f"delete_{search.id}")]]
@@ -160,13 +169,13 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                 w_map = {"new": "new", "mint": "as_good_as_new", "good": "good", "fair": "fair", "poor": "has_given_it_all"}
                 if search.condition in w_map: params["condition"] = w_map[search.condition]
                 
-            web_url = f"{base_web_url}?{urllib.parse.urlencode(params)}"
+            web_url = escape(f"{base_web_url}?{urllib.parse.urlencode(params)}", quote=False)
             
             v_params = {"search_text": search.keywords}
             if search.condition:
                 v_map = {"new": "6,1", "mint": "2", "good": "3", "fair": "4"}
                 if search.condition in v_map: v_params["status_ids"] = v_map[search.condition]
-            vinted_url = f"https://www.vinted.{vinted_domain}/catalog?{urllib.parse.urlencode(v_params)}"
+            vinted_url = escape(f"https://www.vinted.{vinted_domain}/catalog?{urllib.parse.urlencode(v_params)}", quote=False)
             
             summary_msg = t("new_items_found", region, count=new_items_count)
             summary_msg += t("showing_first", region, count=max_items_to_notify)
