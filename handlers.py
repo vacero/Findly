@@ -1,4 +1,5 @@
 from telegram import Update
+from telegram.constants import ChatType
 from telegram.ext import ContextTypes
 from sqlalchemy.orm import Session
 from database import SessionLocal, Search, SeenItem, get_setting
@@ -15,6 +16,8 @@ def restricted(func):
     """Decorator to restrict access to allowed user IDs."""
     @wraps(func)
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        if update.message is None:
+            return
         allowed_chats_str = get_setting("allowed_chat_ids", "")
         
         # Parse the string into a list of integers, handling empty or invalid entries gracefully
@@ -40,7 +43,9 @@ def restricted(func):
                     return
 
         if chat_id not in allowed_chats:
-            await update.message.reply_text(t("unauthorized", get_setting("region", "es")))
+            is_command = (update.message.text or "").startswith("/")
+            if update.effective_chat.type == ChatType.PRIVATE or is_command:
+                await update.message.reply_text(t("unauthorized", get_setting("region", "es")))
             return
         return await func(update, context, *args, **kwargs)
     return wrapped
@@ -265,6 +270,8 @@ async def delete_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None:
+        return
     chat_id = update.effective_chat.id
     if not context.args:
         return
