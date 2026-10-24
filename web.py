@@ -311,10 +311,10 @@ def update_search(search_id: int, search: SearchCreate):
 @app.post("/api/searches/{search_id}/refresh")
 def refresh_search(search_id: int):
     import asyncio
-    from main import global_loop, global_queue
+    import runtime
     from scheduler import check_single_search
     
-    if global_loop is None or global_queue is None:
+    if runtime.loop is None or runtime.queue is None:
         raise HTTPException(status_code=500, detail="Bot is not running, cannot refresh.")
         
     db = SessionLocal()
@@ -323,7 +323,7 @@ def refresh_search(search_id: int):
         if not search:
             raise HTTPException(status_code=404, detail="Search not found")
             
-        asyncio.run_coroutine_threadsafe(check_single_search(search_id, global_queue), global_loop)
+        asyncio.run_coroutine_threadsafe(check_single_search(search_id, runtime.queue), runtime.loop)
         return {"success": True}
     finally:
         db.close()
