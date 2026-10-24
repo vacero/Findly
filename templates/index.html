@@ -882,10 +882,18 @@ createApp({
 
         onMounted(() => {
             fetchData()
-            // Optional: poll stats every 10s
-            setInterval(() => {
-                if (currentRoute.value === 'dashboard') fetchData()
-            }, 10000)
+            // Poll stats every 10s, only while the dashboard tab is visible and its window focused
+            let lastPoll = Date.now()
+            const pollDashboard = () => {
+                if (currentRoute.value !== 'dashboard' || document.visibilityState !== 'visible' || !document.hasFocus()) return
+                if (Date.now() - lastPoll < 2000) return
+                lastPoll = Date.now()
+                fetchData()
+            }
+            setInterval(pollDashboard, 10000)
+            // Refresh right away when coming back to the tab or window
+            document.addEventListener('visibilitychange', pollDashboard)
+            window.addEventListener('focus', pollDashboard)
         })
 
         return {
