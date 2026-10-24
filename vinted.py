@@ -45,6 +45,13 @@ def search_vinted(keywords: str, min_price: Optional[float] = None, max_price: O
         if mapped:
             params["status_ids"] = mapped
 
+    try:
+        interval_mins = int(get_setting("vinted_interval", "5"))
+    except (ValueError, TypeError):
+        interval_mins = 5
+    # Twice the check interval, never less than the original 20 minutes
+    max_age_seconds = max(20, 2 * interval_mins) * 60
+
     import time
     session = requests.Session()
     retries = 0
@@ -89,13 +96,13 @@ def search_vinted(keywords: str, min_price: Optional[float] = None, max_price: O
                 
                 for item in items:
                     try:
-                        # Filter by timestamp (less than 20 minutes old)
+                        # Filter out old/sponsored items by photo timestamp
                         photo = item.get("photo") or {}
                         if isinstance(photo, dict):
                             high_res = photo.get("high_resolution") or {}
                             if isinstance(high_res, dict):
                                 timestamp = high_res.get("timestamp")
-                                if timestamp and (now_ts - int(timestamp)) > 20 * 60:
+                                if timestamp and (now_ts - int(timestamp)) > max_age_seconds:
                                     continue # Too old, skip it
                         
                         item_id = item.get("id")
