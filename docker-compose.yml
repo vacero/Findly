@@ -1,7 +1,6 @@
 services:
   findly:
     build: .
-    image: uniextra/findly:latest
     container_name: findly
     init: true
     restart: unless-stopped
