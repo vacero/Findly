@@ -1,6 +1,6 @@
 import os
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, event
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Index, event
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from datetime import datetime
 
@@ -62,7 +62,7 @@ class SeenItem(Base):
     __tablename__ = "seen_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    wallapop_id = Column(String, unique=True, index=True)
+    wallapop_id = Column(String, index=True)
     search_id = Column(Integer, ForeignKey("searches.id"))
     found_at = Column(DateTime, default=datetime.utcnow)
     
@@ -71,6 +71,11 @@ class SeenItem(Base):
     url = Column(String, nullable=True)
 
     search = relationship("Search", back_populates="seen_items")
+
+    # The same listing can match several searches, so uniqueness is per search
+    __table_args__ = (
+        Index("uq_seen_items_item_search", "wallapop_id", "search_id", unique=True),
+    )
 
 class AppSetting(Base):
     __tablename__ = "app_settings"
@@ -119,6 +124,18 @@ def init_db():
             if "url" not in seen_cols:
                 conn.execute(text("ALTER TABLE seen_items ADD COLUMN url VARCHAR"))
                 print("Added url column to seen_items table")
+        except Exception as e:
+            print(f"Migration check error: {e}")
+
+    # Older databases made wallapop_id unique across all searches
+    with engine.begin() as conn:
+        try:
+            unique_indexes = {row[1] for row in conn.execute(text("PRAGMA index_list(seen_items)")) if row[2]}
+            if "ix_seen_items_wallapop_id" in unique_indexes:
+                conn.execute(text("DROP INDEX ix_seen_items_wallapop_id"))
+                conn.execute(text("CREATE INDEX ix_seen_items_wallapop_id ON seen_items (wallapop_id)"))
+                print("Made seen_items.wallapop_id unique per search instead of globally")
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_seen_items_item_search ON seen_items (wallapop_id, search_id)"))
         except Exception as e:
             print(f"Migration check error: {e}")
 

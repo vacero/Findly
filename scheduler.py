@@ -89,11 +89,14 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
         
         new_items_count = 0
         max_items_to_notify = 10
+        notifications = []
+        batch_ids = set()
         
         for item in items:
             item_id = item.get("id")
-            if not item_id:
+            if not item_id or str(item_id) in batch_ids:
                 continue
+            batch_ids.add(str(item_id))
             exists = db.query(SeenItem).filter(SeenItem.wallapop_id == str(item_id), SeenItem.search_id == search.id).first()
             if exists:
                 continue
@@ -121,7 +124,7 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 if item.get('image'):
-                    await queue.put({
+                    notifications.append({
                         'type': 'photo',
                         'chat_id': search.chat_id,
                         'photo': item['image'],
@@ -130,7 +133,7 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
                         'reply_markup': reply_markup
                     })
                 else:
-                    await queue.put({
+                    notifications.append({
                         'type': 'message',
                         'chat_id': search.chat_id,
                         'text': msg,
@@ -179,7 +182,7 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
             keyboard = [[InlineKeyboardButton("❌ Dejar de seguir", callback_data=f"delete_{search.id}")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
                  
-            await queue.put({
+            notifications.append({
                 'type': 'message',
                 'chat_id': search.chat_id,
                 'text': summary_msg,
@@ -189,6 +192,10 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
             
         search.last_checked_at = datetime.utcnow()
         db.commit()
+
+        # Only notify once the items are saved, so a failed commit can't cause repeats
+        for notification in notifications:
+            await queue.put(notification)
     except Exception as e:
         logger.error(f"Error processing search {search_id}: {e}")
     finally:
