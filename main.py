@@ -18,6 +18,8 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+background_tasks = []
+
 async def cleanup_loop():
     logger.info("Database cleanup worker started.")
     while True:
@@ -31,11 +33,13 @@ async def post_init(application: Application):
     runtime.loop = asyncio.get_running_loop()
     runtime.queue = asyncio.Queue()
     
-    asyncio.create_task(telegram_notifier_loop(application, runtime.queue))
-    asyncio.create_task(platform_scheduler_loop(runtime.queue, "wallapop"))
-    asyncio.create_task(platform_scheduler_loop(runtime.queue, "vinted"))
-    asyncio.create_task(cleanup_loop())
-    
+    background_tasks.extend([
+        asyncio.create_task(telegram_notifier_loop(application, runtime.queue)),
+        asyncio.create_task(platform_scheduler_loop(runtime.queue, "wallapop")),
+        asyncio.create_task(platform_scheduler_loop(runtime.queue, "vinted")),
+        asyncio.create_task(cleanup_loop()),
+    ])
+
     # Send startup message
     allowed_chats = get_setting("allowed_chat_ids", "")
     if allowed_chats:
@@ -58,6 +62,13 @@ async def post_init(application: Application):
             except Exception as e:
                 logger.error(f"Failed to send startup message to {chat_id}: {e}")
 
+async def post_stop(application: Application):
+    """Cancel the background loops so they don't outlive the event loop on shutdown."""
+    for task in background_tasks:
+        task.cancel()
+    await asyncio.gather(*background_tasks, return_exceptions=True)
+    background_tasks.clear()
+
 def restart_bot():
     """Restart the entire application to apply new settings"""
     logger.info("Restarting Findly...")
@@ -76,7 +87,7 @@ def main():
             time.sleep(60)
 
     # Create Bot Application
-    application = Application.builder().token(token).post_init(post_init).build()
+    application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).build()
 
     # Add Handlers
     application.add_handler(CommandHandler("start", start))
