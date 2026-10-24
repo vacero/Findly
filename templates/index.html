@@ -114,13 +114,13 @@
                           <div class="lg:col-span-2">
                               <div class="flex justify-between mb-3">
                                   <label class="block text-sm font-medium text-gray-700">{{ t('price_range') }}</label>
-                                  <span class="text-sm text-gray-500 font-medium">€{{ actualMinPrice }} - {{ actualMaxPrice >= 1500 ? t('any') : '€' + actualMaxPrice }}</span>
+                                  <span class="text-sm text-gray-500 font-medium">€{{ actualMinPrice }} - {{ formSearch.exact_max_price === null && maxPriceIndex === 36 ? t('any') : '€' + actualMaxPrice }}</span>
                               </div>
                               <div class="relative w-full h-8 flex items-center">
                                   <div class="absolute w-full h-2 bg-gray-200 rounded-lg"></div>
                                   <div class="absolute h-2 bg-primary rounded-lg" :style="{ left: (minPriceIndex / 36 * 100) + '%', width: ((maxPriceIndex - minPriceIndex) / 36 * 100) + '%' }"></div>
-                                  <input type="range" v-model.number="minPriceIndex" @input="enforceMinMax" min="0" max="36" step="1" class="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent z-10">
-                                  <input type="range" v-model.number="maxPriceIndex" @input="enforceMinMax" min="0" max="36" step="1" class="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent z-20">
+                                  <input type="range" v-model.number="minPriceIndex" @input="formSearch.exact_min_price = null; enforceMinMax()" min="0" max="36" step="1" class="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent z-10">
+                                  <input type="range" v-model.number="maxPriceIndex" @input="formSearch.exact_max_price = null; enforceMinMax()" min="0" max="36" step="1" class="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent z-20">
                               </div>
                           </div>
 
@@ -130,7 +130,7 @@
                                 <span class="text-sm text-gray-500 font-medium">{{ distanceLabel }}</span>
                             </div>
                             <div class="relative w-full h-8 flex items-center">
-                                <input v-model.number="formSearch.distance_index" type="range" min="0" max="3" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent">
+                                <input v-model.number="formSearch.distance_index" @input="formSearch.exact_distance = null" type="range" min="0" max="3" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent">
                             </div>
                             <div class="flex justify-between text-xs text-gray-400 mt-1 px-1">
                                 <span>5km</span>
@@ -534,7 +534,7 @@ createApp({
 
         const isEditing = ref(false)
         const editingId = ref(null)
-        const formSearch = ref({ keywords: '', min_price: 0, max_price: 2000, distance_index: 3, condition: '', wallapop: true, vinted: true })
+        const formSearch = ref({ keywords: '', min_price: 0, max_price: 2000, distance_index: 3, condition: '', wallapop: true, vinted: true, exact_min_price: null, exact_max_price: null, exact_distance: null })
 
         const items = ref([])
 
@@ -543,8 +543,8 @@ createApp({
         const minPriceIndex = ref(0);
         const maxPriceIndex = ref(36);
 
-        const actualMinPrice = Vue.computed(() => priceSteps[minPriceIndex.value]);
-        const actualMaxPrice = Vue.computed(() => priceSteps[maxPriceIndex.value]);
+        const actualMinPrice = Vue.computed(() => formSearch.value.exact_min_price !== null ? formSearch.value.exact_min_price : priceSteps[minPriceIndex.value]);
+        const actualMaxPrice = Vue.computed(() => formSearch.value.exact_max_price !== null ? formSearch.value.exact_max_price : priceSteps[maxPriceIndex.value]);
 
         const getIndexForPrice = (p) => {
             if (p == null || p >= 1500) return 36;
@@ -562,6 +562,7 @@ createApp({
                 // Swap them or bound them. We will bound them
                 if (minPriceIndex.value > maxPriceIndex.value) {
                     minPriceIndex.value = maxPriceIndex.value;
+                    formSearch.value.exact_min_price = null;
                 }
             }
         }
@@ -570,6 +571,7 @@ createApp({
         
         const distanceMap = [5, 10, 30, null];
         const distanceLabel = Vue.computed(() => {
+            if (formSearch.value.exact_distance !== null) return formSearch.value.exact_distance + ' km';
             const val = distanceMap[formSearch.value.distance_index];
             return val ? val + ' km' : t('any');
         });
@@ -687,7 +689,6 @@ createApp({
         const quickUrl = ref('')
 
         const parseUrl = () => {
-            triggerShake();
             try {
                 if (!quickUrl.value) return;
                 const url = new URL(quickUrl.value);
@@ -700,8 +701,22 @@ createApp({
                     minPriceIndex.value = getIndexForPrice(minP ? parseFloat(minP) : 0);
                     const maxP = url.searchParams.get('max_sale_price');
                     maxPriceIndex.value = getIndexForPrice(maxP ? parseFloat(maxP) : 1500);
+                    formSearch.value.exact_min_price = minP ? parseFloat(minP) : null;
+                    formSearch.value.exact_max_price = maxP ? parseFloat(maxP) : null;
                     const dist = url.searchParams.get('distance_in_km');
-                    formSearch.value.distance_in_km = dist ? parseInt(dist) : null;
+                    if (dist) {
+                        const km = parseInt(dist);
+                        formSearch.value.exact_distance = km;
+                        const dIdx = distanceMap.indexOf(km);
+                        formSearch.value.distance_index = dIdx >= 0 && dIdx < 3 ? dIdx : 3;
+                    } else {
+                        formSearch.value.exact_distance = null;
+                        formSearch.value.distance_index = 3;
+                    }
+                    const condMap = { new: 'new', as_good_as_new: 'mint', good: 'good', fair: 'fair', has_given_it_all: 'poor' };
+                    const cond = (url.searchParams.get('condition') || '').split(',')[0];
+                    formSearch.value.condition = condMap[cond] || '';
+                    triggerShake();
                 } else if (url.hostname.includes('vinted')) {
                     formSearch.value.wallapop = false;
                     formSearch.value.vinted = true;
@@ -710,7 +725,15 @@ createApp({
                     minPriceIndex.value = getIndexForPrice(minP ? parseFloat(minP) : 0);
                     const maxP = url.searchParams.get('price_to');
                     maxPriceIndex.value = getIndexForPrice(maxP ? parseFloat(maxP) : 1500);
+                    formSearch.value.exact_min_price = minP ? parseFloat(minP) : null;
+                    formSearch.value.exact_max_price = maxP ? parseFloat(maxP) : null;
                     formSearch.value.distance_index = 3;
+                    formSearch.value.exact_distance = null;
+                    const condMap = { '6': 'new', '1': 'new', '2': 'mint', '3': 'good', '4': 'fair' };
+                    const statusIds = [...url.searchParams.getAll('status_ids[]'), ...url.searchParams.getAll('status_ids')]
+                        .flatMap(v => v.split(',')).filter(v => v);
+                    formSearch.value.condition = condMap[statusIds[0]] || '';
+                    triggerShake();
                 }
             } catch(e) {
                 console.log("Invalid URL", e);
@@ -790,9 +813,9 @@ createApp({
             
             const payload = {
                 keywords: formSearch.value.keywords,
-                min_price: pMin > 0 ? pMin : null,
-                max_price: pMax >= 1500 ? null : pMax,
-                distance_in_km: distanceMap[formSearch.value.distance_index],
+                min_price: formSearch.value.exact_min_price !== null ? formSearch.value.exact_min_price : (pMin > 0 ? pMin : null),
+                max_price: formSearch.value.exact_max_price !== null ? formSearch.value.exact_max_price : (pMax >= 1500 ? null : pMax),
+                distance_in_km: formSearch.value.exact_distance !== null ? formSearch.value.exact_distance : distanceMap[formSearch.value.distance_index],
                 condition: formSearch.value.condition || null,
                 platform: platformStr
             }
@@ -835,7 +858,10 @@ createApp({
                 distance_index: dIndex,
                 condition: search.condition || '',
                 wallapop: search.platform === 'both' || search.platform === 'wallapop',
-                vinted: search.platform === 'both' || search.platform === 'vinted'
+                vinted: search.platform === 'both' || search.platform === 'vinted',
+                exact_min_price: search.min_price ?? null,
+                exact_max_price: search.max_price ?? null,
+                exact_distance: search.distance_in_km ?? null
             }
         }
 
@@ -846,7 +872,7 @@ createApp({
             isEditing.value = false
             editingId.value = null
             quickUrl.value = ''
-            formSearch.value = { keywords: '', distance_index: 3, condition: '', wallapop: true, vinted: true }; minPriceIndex.value = 0; maxPriceIndex.value = 36;
+            formSearch.value = { keywords: '', distance_index: 3, condition: '', wallapop: true, vinted: true, exact_min_price: null, exact_max_price: null, exact_distance: null }; minPriceIndex.value = 0; maxPriceIndex.value = 36;
         }
 
         const deleteSearch = async (id) => {
