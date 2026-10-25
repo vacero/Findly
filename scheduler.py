@@ -218,11 +218,13 @@ async def platform_scheduler_loop(queue: asyncio.Queue, platform: str):
         finally:
             db.close()
 
+        # Vary the order and spacing so requests don't follow a fixed pattern
+        random.shuffle(search_ids)
         for s_id in search_ids:
             await check_single_search(s_id, queue, platform_override=platform)
-            await asyncio.sleep(15)  # Wait 15s between each search to avoid flooding
-            
-        # Add random jitter between -30s and +30s
-        wait_time = (interval_mins * 60) + random.uniform(-30, 30)
+            await asyncio.sleep(random.uniform(10, 30))  # Wait 10-30s between searches to avoid flooding
+
+        # Add random jitter of +/-20% of the interval
+        wait_time = interval_mins * 60 * random.uniform(0.8, 1.2)
         logger.info(f"Next check for {platform} in {wait_time/60:.1f} minutes")
         await asyncio.sleep(max(wait_time, 60))  # Ensure at least 60s
