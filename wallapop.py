@@ -15,9 +15,11 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 ]
 
-def search_items(keywords: str, min_price: Optional[float] = None, max_price: Optional[float] = None, distance_in_km: Optional[int] = None, condition: Optional[str] = None) -> List[Dict]:
+def search_items(keywords: str, min_price: Optional[float] = None, max_price: Optional[float] = None, distance_in_km: Optional[int] = None, condition: Optional[str] = None, since_ts: Optional[float] = None) -> List[Dict]:
     """
     Search for items on Wallapop.
+    If since_ts (epoch seconds) is given, look back further than today and keep only
+    items created or modified since then (used to catch up after quiet hours).
     """
     region = get_setting("region", "es").lower()
     if region not in ["es", "it", "pt"]:
@@ -41,7 +43,7 @@ def search_items(keywords: str, min_price: Optional[float] = None, max_price: Op
         "latitude": lat,
         "longitude": lon,
         "country_code": region.upper(),
-        "time_filter": "today",
+        "time_filter": "today" if since_ts is None else "lastWeek",
         "source": "search_box"
     }
 
@@ -116,6 +118,12 @@ def search_items(keywords: str, min_price: Optional[float] = None, max_price: Op
                 for item in items:
                     # Extract relevant fields
                     try:
+                        if since_ts is not None:
+                            # Timestamps are in milliseconds
+                            changed_ms = max(item.get("created_at") or 0, item.get("modified_at") or 0)
+                            if changed_ms and changed_ms / 1000 < since_ts:
+                                continue
+
                         item_id = item.get("id")
                         title = item.get("title")
                         

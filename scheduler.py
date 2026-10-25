@@ -1,7 +1,9 @@
 import asyncio
 import random
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
+from functools import lru_cache
 from telegram.ext import Application
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from database import SessionLocal, Search, SeenItem, get_setting
@@ -20,6 +22,40 @@ def format_price(price, currency):
     except (TypeError, ValueError):
         return "?"
     return f"{amount} {currency or ''}".strip()
+
+@lru_cache(maxsize=8)
+def parse_active_hours(value):
+    """Parse ACTIVE_HOURS 'HH:MM-HH:MM' into (start, end) minutes since midnight; None means always active."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        start_str, end_str = value.split("-")
+        start_h, start_m = (int(p) for p in start_str.split(":"))
+        end_h, end_m = (int(p) for p in end_str.split(":"))
+        if not all(0 <= h < 24 for h in (start_h, end_h)) or not all(0 <= m < 60 for m in (start_m, end_m)):
+            raise ValueError
+    except ValueError:
+        logger.warning(f"Ignoring invalid ACTIVE_HOURS '{value}', expected HH:MM-HH:MM (e.g. 08:00-00:30)")
+        return None
+    start, end = start_h * 60 + start_m, end_h * 60 + end_m
+    return None if start == end else (start, end)
+
+def seconds_until_active(hours, now=None):
+    """Seconds until the active window opens, or 0 if checks are allowed now."""
+    if hours is None:
+        return 0
+    now = now or datetime.now()
+    start, end = hours
+    minute = now.hour * 60 + now.minute
+    if start < end:
+        active = start <= minute < end
+    else:
+        # Window crosses midnight, e.g. 08:00-00:30
+        active = minute >= start or minute < end
+    if active:
+        return 0
+    return ((start - minute) % (24 * 60)) * 60 - now.second
 
 async def telegram_notifier_loop(application: Application, queue: asyncio.Queue):
     logger.info("Telegram notifier worker started.")
@@ -72,10 +108,11 @@ async def telegram_notifier_loop(application: Application, queue: asyncio.Queue)
             logger.error(f"Unexpected error in telegram_notifier_loop: {e}")
             await asyncio.sleep(1)
 
-async def check_single_search(search_id: int, queue: asyncio.Queue, platform_override=None):
+async def check_single_search(search_id: int, queue: asyncio.Queue, platform_override=None, since_ts=None):
     """
     Check for new items for a single search.
     If platform_override is provided, only check that platform.
+    If since_ts (epoch seconds) is provided, catch up on everything listed since then.
     """
     db = SessionLocal()
     try:
@@ -94,13 +131,16 @@ async def check_single_search(search_id: int, queue: asyncio.Queue, platform_ove
             target_platform = search.platform or "both"
         else:
             target_platform = platform_override or search.platform or "both"
-        
+
+        # A first check only records listings, so it never needs to look back further
+        since = None if is_first_check else since_ts
+
         if target_platform in ["wallapop", "both"]:
-            w_items = await asyncio.to_thread(search_items, search.keywords, search.min_price, search.max_price, search.distance_in_km, search.condition)
+            w_items = await asyncio.to_thread(search_items, search.keywords, search.min_price, search.max_price, search.distance_in_km, search.condition, since)
             items.extend(w_items)
-        
+
         if target_platform in ["vinted", "both"]:
-            v_items = await asyncio.to_thread(search_vinted, search.keywords, search.min_price, search.max_price, search.condition)
+            v_items = await asyncio.to_thread(search_vinted, search.keywords, search.min_price, search.max_price, search.condition, since)
             items.extend(v_items)
         
         new_items_count = 0
@@ -228,7 +268,19 @@ async def platform_scheduler_loop(queue: asyncio.Queue, platform: str):
     Runs check for a specific platform based on its interval.
     """
     logger.info(f"Scheduler started for {platform}.")
+    last_cycle_ts = None
+    catch_up_since = None
     while True:
+        # Outside ACTIVE_HOURS: pause, then catch up on what was listed in the meantime
+        pause = seconds_until_active(parse_active_hours(get_setting("active_hours", "")))
+        if pause > 0:
+            if catch_up_since is None:
+                catch_up_since = (last_cycle_ts or time.time()) - 60
+            resume = datetime.now() + timedelta(seconds=pause)
+            logger.info(f"Outside active hours, pausing {platform} checks until {resume:%H:%M}")
+            await asyncio.sleep(pause + random.uniform(0, 300))  # Don't resume at exactly the same time every day
+            continue
+
         try:
             interval_str = get_setting(f"{platform}_interval", "5")
             interval_mins = int(interval_str)
@@ -246,10 +298,14 @@ async def platform_scheduler_loop(queue: asyncio.Queue, platform: str):
         finally:
             db.close()
 
+        if catch_up_since is not None:
+            logger.info(f"Catching up on {platform} listings since {datetime.fromtimestamp(catch_up_since):%H:%M}")
+        last_cycle_ts = time.time()
         for s_id in search_ids:
-            await check_single_search(s_id, queue, platform_override=platform)
+            await check_single_search(s_id, queue, platform_override=platform, since_ts=catch_up_since)
             await asyncio.sleep(15)  # Wait 15s between each search to avoid flooding
-            
+        catch_up_since = None
+
         # Add random jitter between -30s and +30s
         wait_time = (interval_mins * 60) + random.uniform(-30, 30)
         logger.info(f"Next check for {platform} in {wait_time/60:.1f} minutes")

@@ -2,6 +2,11 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 
+# Time zone data, so TZ (e.g. TZ=Europe/Madrid) applies to ACTIVE_HOURS and log timestamps
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Create non-root user and group (UID/GID 1000)

@@ -13,9 +13,11 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 ]
 
-def search_vinted(keywords: str, min_price: Optional[float] = None, max_price: Optional[float] = None, condition: Optional[str] = None) -> List[Dict]:
+def search_vinted(keywords: str, min_price: Optional[float] = None, max_price: Optional[float] = None, condition: Optional[str] = None, since_ts: Optional[float] = None) -> List[Dict]:
     """
     Search for items on Vinted.
+    If since_ts (epoch seconds) is given, also accept items up to that old
+    (used to catch up after quiet hours).
     """
     region = get_setting("region", "es").lower()
     domain = "co.uk" if region == "uk" else region
@@ -53,6 +55,8 @@ def search_vinted(keywords: str, min_price: Optional[float] = None, max_price: O
     max_age_seconds = max(20, 2 * interval_mins) * 60
 
     import time
+    if since_ts is not None:
+        max_age_seconds = max(max_age_seconds, time.time() - since_ts)
     session = requests.Session()
     retries = 0
     max_retries = 3
